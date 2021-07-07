@@ -2,6 +2,9 @@
 # https://github.com/seansullivan44/Wealthsimple-Trade-Python
 import wealthsimple
 
+def getTFA():
+    return input("Enter TFA code: ")
+
 class wealthSimpleMethods:
     def __init__(self):
         self._user = None
@@ -25,28 +28,26 @@ class wealthSimpleMethods:
         self._user = creds.readline().strip()
         self._password = creds.readline().strip()
         return 1
-    
 
     def getClient(self):
         try:
-            self.cleint = wealthsimple.WSTrade(self._user, self._password, two_factor_callback=getTFA)
+            self.client = wealthsimple.WSTrade(self._user, self._password, two_factor_callback=getTFA)
         except Exception as e:
             print(e)
             return 0
         return 1
 
     def getAccounts(self):
-        self._accounts = self.cleint.get_accounts()
-        print(self._accounts)
+        self._accounts = self.client.get_accounts()
 
-    
+"""    def getStocks(self):
+        for account in self._accounts:
+            if account['']
+"""
 if __name__ == "__main__":
-        
-    def getTFA():
-        return input("Enter TFA code: ")
     wsm = wealthSimpleMethods()
     if wsm.getLoginCred() == 1:
         print("get login cred success")
     if wsm.getClient() == 1:
-       print("get client success")
-    wsm.getAccounts()
+        print("get client success")
+        wsm.getAccounts()

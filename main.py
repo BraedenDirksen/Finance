@@ -1,6 +1,10 @@
 from CBConnect import coinbaseMethods
+from WSConnect import wealthSimpleMethods
 from time import sleep
 from os import system
+
+
+
 
 def main():
     import coinbase
@@ -8,24 +12,36 @@ def main():
     CB = coinbaseMethods()
     initCoinbase(CB)
 
+
+    WS = wealthSimpleMethods()
+    initWealthSimple(WS)
+
     try:
         while True:
             print("use ctrl + c at anytime to stop program")
             balances = CB.getBalances()
             for balance in balances:
                 print(balance)
-            sleep(2)
+            sleep(60)
             system('cls')
     except KeyboardInterrupt:
         pass
+
 def initCoinbase(CB):
     if CB.openKeysFile() == 1:
-        print("keys file success")
+        print("CB keys file success")
         if CB.getKeys() == 1:
-            print("get keys success")
+            print("CB get keys success")
             if CB.getClient() == 1:
-                print("client success")
+                print("CB client success")
                 if CB.getAccounts() == 1:
-                    print("get accounts success")
+                    print("CB get accounts success")
+
+def initWealthSimple(WS):
+    if WS.getLoginCred() == 1:
+        print("WS get login cred success")
+    if WS.getClient() == 1:
+        print("WS get client success")
+        WS.getAccounts()
 
 main()
