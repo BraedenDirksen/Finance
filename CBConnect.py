@@ -1,7 +1,6 @@
 # https://developers.coinbase.com/api/v2
 from coinbase.wallet.client import Client
 from coinbase.wallet import error
-from coinbase.wallet.model import Transaction
 class coinbaseMethods:
     def __init__(self, display = 0, displayInit = 0):
         if displayInit: print("--Initializing Coinbase Connection--")
