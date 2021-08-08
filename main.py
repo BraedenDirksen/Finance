@@ -44,4 +44,6 @@ def initWealthSimple(WS):
         print("WS get client success")
         WS.getAccounts()
 
+def updateTransactions():
+    pass
 main()

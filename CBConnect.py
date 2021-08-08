@@ -16,6 +16,8 @@ class coinbaseMethods:
         self._sends = None
         self._prices = None
         self.display = display
+        self.success = 0
+        self.ledgerAddresses = []
 
         if displayInit: print("Opening Keys File... ", end = "")
         if self.openKeysFile():
@@ -36,6 +38,7 @@ class coinbaseMethods:
                             if self.getPrices():
                                 if displayInit: print("success")
                                 if displayInit: print("--Initialization Complete--")
+                                self.success = 1
 
     def openKeysFile(self,filename = "keys.txt"):
         # opens the files with the keys given by the user or defualts to keys.txt
@@ -49,8 +52,8 @@ class coinbaseMethods:
         except PermissionError:
             print("Error: unable to open file")
             return 0
-        except Exception:
-            print("Error:", Exception)
+        except Exception as e:
+            print("Error:", e)
             return 0
         
     def getKeys(self):
@@ -76,10 +79,10 @@ class coinbaseMethods:
             self._secretKey = None
             return 1
         except error.AuthenticationError:
-            print("Error: invalid key, or secret key,", coinbase.wallet.error.AuthenticationError )
+            print("Error: invalid key, or secret key,", error.AuthenticationError )
             return 0
-        except Exception:
-            print("Error:", Exception)
+        except Exception as e:
+            print("Error:", e)
             return 0
 
     def getAccounts(self):
@@ -88,8 +91,8 @@ class coinbaseMethods:
         try:
             self._accounts = self._client.get_accounts()
             return 1
-        except Exception:
-            print("Error:", Exception)
+        except Exception as e:
+            print("Error:", e)
             return 0
 
     def getTransactions(self):
@@ -97,7 +100,10 @@ class coinbaseMethods:
         # returns a dictionary of the different wallets transactions data
         transactions = {}
         for account in self._accounts.data:
-            transactions[account['name']] = self._client.get_transactions(account['id'])
+            try:
+                transactions[account['name']] = self._client.get_transactions(account['id'])
+            except:
+                pass
         if not self._transactions or self._transactions != transactions:
             self._transactions = transactions
         return transactions
@@ -113,7 +119,7 @@ class coinbaseMethods:
             value = str( wallet['native_balance']).replace('CAD','')
             total += float(value)
         output.append( 'Total Balance: ' + 'CAD ' + str(total) )
-        return output
+        return output, total
     
     def getPrices(self):
         # gets current prices of all currecies that have transactions associated with them
@@ -169,8 +175,8 @@ class coinbaseMethods:
                         
                         profit = paymentValueCurrent + recievedValueCurrent
                         trades.append(profit)
-                        if self.display: print(payment[0] * -1,payment[1],"to", recieved[0], recieved[1], "profit:", round(profit,3), "CAD")
-        if self.display: print("value added by trades: " + str(round(sum(trades),3)) + " CAD")
+                       # if self.display: print(payment[0] * -1,payment[1],"to", recieved[0], recieved[1], "profit:", round(profit,3), "CAD")
+        #if self.display: print("value added by trades: " + str(round(sum(trades),3)) + " CAD")
         return trades, sum(trades)
 
     def getLedgerAmount(self):
@@ -221,12 +227,9 @@ class coinbaseMethods:
                                         break
                                 ledgerHoldings.append((amount * -1, "LTC", value * -1))
 
-
         total = 0
         for wallet in ledgerHoldings:
-            if self.display: print(round(wallet[0], 3), wallet[1], "worth $" + str(round(wallet[2], 3)), "CAD")
             total += wallet[2]
-        if self.display: print("total holdings: $" + str(round(total,3)), "CAD")
         return total
 
     def getMiningAmount(self):
@@ -241,7 +244,7 @@ class coinbaseMethods:
             for transaction in self._transactions[currency]['data']:
                 if transaction['type'] == "send":
                     if not transaction["amount"]["amount"] == "0.02214262": # ignore specific transaction
-                        if float(transaction["amount"]["amount"]) >= 0:
+                        if float(transaction["amount"]["amount"]) >= 0 and transaction['details']["subtitle"] == "From NiceHash":
                             amount += float(transaction["amount"]["amount"])
                             total2 += float(transaction["native_amount"]["amount"])
 
@@ -249,19 +252,21 @@ class coinbaseMethods:
                 if currency2["base"] == currency.strip(" Wallet"):
                     total += float(currency2["amount"]) * amount
                     break
-        if self.display: print("current Value: $" + str(round(total,3)), "\nValue When Mined: $" + str(round(total2,3)))
         return total, total2
     
     def MoneySpent(self):
         # gets total money spend including fees
         # returns total
-        total = 0
+        total = 0 
         for currency in list(self._transactions.keys()):
             for transaction in self._transactions[currency]['data']:
                 if transaction['type'] == "buy":
                     total += float(transaction["native_amount"]["amount"])
-        # total += 1000 # bought on another site
-        if self.display: print("total spent: $" + str(round(total,3)) + " CAD")
+                if transaction['type'] == "send":
+                    if transaction['details']["title"] == "Received Ethereum":
+                        total += float(transaction["native_amount"]["amount"])
+                    if transaction['details']["title"] == "Received Bitcoin" and transaction['details']["subtitle"] != "From NiceHash":
+                        total += float(transaction["native_amount"]["amount"])
         return total
 
     def GetAmountWithdrawn(self):
@@ -276,34 +281,46 @@ class coinbaseMethods:
                             if "address" in list(transaction["to"].keys()):
                                 if transaction["to"]["address"] not in ["ltc1qrrag0qgyrcm9k6g9mmauvrs4ta54jhalkghn5x","0x5E95d930A3e7329CC0594Ba9E8372Fa36A1D4FC3","bc1qa7z8zpk5s00ln0u3q997pkmy5hjsw8pstqdw50","DM4G6KPXeUTb2jQcxw5H91rz1QngsHSq1y"]:
                                     total -= float(transaction["native_amount"]["amount"])
-        if self.display: print("Total Amount Withdrawn: $" + str(round(total,3)))
         return total
 
 if __name__ == "__main__":
-    display = 1
+    import time, os
+    display = 0
     test = coinbaseMethods(display, 1)
-    #f = open('transactions.txt', 'w')
-    #f.write(str(transactions))
-    #f.close()
-    balances = test.getBalances()
-    print("\nCoinbase holdings:")
-    for balance in balances:
-        if display: print(balance)
+    if test.success:
+        balances, CBtotal = test.getBalances()
+        print("\nCoinbase holdings:")
+        for balance in balances:
+            print(balance)
 
-    print("\nTransactions:")
-    test.getTradesProfits()
+        '''
+        f = open("transactions.txt", "w")
+        f.write(str(test.getTransactions()))
+        f.close()
+        '''
 
-    print("\nLedger Holdings:")
-    held = test.getLedgerAmount()
-
-    print("\nMiningProfits:")
-    mined = test.getMiningAmount()
-
-    print("\nAll purchases:")
-    spent = test.MoneySpent()
-
-    print("\nAmount Withdrawn:")
-    withdrawn = test.GetAmountWithdrawn()
-    total = held - spent + withdrawn
-
-    print("\ntotal crypto profits: $" + str(round(total,3)), "CAD")
+        
+        try:
+            while True: 
+            
+                test.getTradesProfits()
+                held = test.getLedgerAmount()
+                minedNow, minedThen = test.getMiningAmount()
+                withdrawn = test.GetAmountWithdrawn() - 1000 # correct for purchase for someone else
+                spent = test.MoneySpent() - 1000 # correct for purchase for someone else
+                total = held - spent + withdrawn + CBtotal
+            
+                output = "\nLedger Holdings:" + "\nAmount in offline ledger:" + str(round(held,3)) + "\n\nTotal value when mined:" + str(round(minedThen,3)) + "\nTotal value mined now:" + str(round(minedNow,3)) + "\n\nTotal withdrawn:" + str(round(withdrawn,3)) + "\nTotal Spent:" + str(spent) + "\nTotal held: $"+ str(round(CBtotal+held,3)) +"\n\nTotal profits: $" + str(round(total,3))+ " CAD"
+                print(output)
+                f = open("data.txt", "w")   
+                f.write(output)
+                f.close()
+                time.sleep(60)
+                test.getAccounts()
+                test.getPrices()
+                os.system('cls')
+        except KeyboardInterrupt:
+            pass    
+        except Exception as x:
+            print(x)
+            input()
